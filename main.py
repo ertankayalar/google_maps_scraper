@@ -15,14 +15,13 @@ class Business:
     address: str = None
     website: str = None
     phone_number: str = None
-    reviews_count: int = None
-    reviews_average: float = None
+    reviews_count: str = None
+    reviews_average: str = None
+
 
 @dataclass
 class BusinessList:
-    """holds list of Business objects, 
-       and save to both excel and csv
-    """
+    # holds list of Business objects, and save to both excel and csv
     business_list : list[Business] = field(default_factory=list)
     
     def dataframe(self):
@@ -42,7 +41,7 @@ class BusinessList:
     
     def save_to_csv(self, filename):
         """saves pandas dataframe to csv file
-
+         
         Args:
             filename (str): filename
         """
@@ -52,7 +51,7 @@ class BusinessList:
 def main():
     
     with sync_playwright() as p:
-        
+        # production modda headless=True olabilir
         browser = p.chromium.launch(headless=False)
         page = browser.new_page()
         
@@ -73,9 +72,10 @@ def main():
         # scraped the same number of listings in the previous iteration
         previously_counted = 0
         while True:
-            page.mouse.wheel(0, 10000)
-            page.wait_for_timeout(3000)
+            page.mouse.wheel(0, 10000) # duruma göre rakam değişebilir
+            page.wait_for_timeout(3000) # production da gerekmiyor, development için gerekli
             
+            # istediğimiz kadarını alabilmek için total den büyük oluncaya kadar almaya çalışıyoruz
             if page.locator('//div[@role="article"]').count() >= total:
                 listings = page.locator('//div[@role="article"]').all()[:total]
                 print(f'Total Scraped: {len(listings)}')
@@ -103,7 +103,7 @@ def main():
             address_xpath = '//button[@data-item-id="address"]//div[contains(@class, "fontBodyMedium")]'
             website_xpath = '//a[@data-item-id="authority"]//div[contains(@class, "fontBodyMedium")]'
             phone_number_xpath = '//button[contains(@data-item-id, "phone:tel:")]//div[contains(@class, "fontBodyMedium")]'
-            reviews_span_xpath = '//span[@role="img"]'
+            reviews_span_xpath = '//span[@role="img" and @class="ZkP5Je"]'
             
             business = Business()
             
@@ -124,8 +124,15 @@ def main():
             else:
                 business.phone_number = ''
             if listing.locator(reviews_span_xpath).count() > 0:
-                business.reviews_average = float(listing.locator(reviews_span_xpath).get_attribute('aria-label').split()[0].replace(',','.').strip())
-                business.reviews_count = int(listing.locator(reviews_span_xpath).get_attribute('aria-label').split()[2].strip())
+
+
+                # print(f'reviews_average:')
+                # print(type(listing.locator(reviews_span_xpath).get_attribute('aria-label')))
+
+                # print(f'reviews_average: {listing.locator(reviews_span_xpath).get_attribute('aria-label').split()[0].replace(',','.').strip()}')
+                business.reviews_average = listing.locator(reviews_span_xpath).get_attribute('aria-label').split()[0].replace(',','.').strip()
+                business.reviews_count = listing.locator(reviews_span_xpath).get_attribute('aria-label').split()[2].strip()
+                # business.reviews_count = listing.locator(reviews_span_xpath).get_attribute('aria-label').split()[2].strip()
             else:
                 business.reviews_average = ''
                 business.reviews_count = ''
